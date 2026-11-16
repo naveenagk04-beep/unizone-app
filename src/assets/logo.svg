@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="UniZone">
+  <defs>
+    <linearGradient id="uz-a" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e879f9"/>
+      <stop offset="32%" stop-color="#a855f7"/>
+      <stop offset="62%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="uz-b" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="55%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="uz-orbit" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="45%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#c026d3"/>
+    </linearGradient>
+    <linearGradient id="uz-spark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="uz-cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#233a8f"/>
+      <stop offset="100%" stop-color="#0b1850"/>
+    </linearGradient>
+  </defs>
+
+  <!-- back orbit -->
+  <ellipse cx="124" cy="142" rx="88" ry="30" transform="rotate(-20 124 142)" fill="none" stroke="url(#uz-orbit)" stroke-width="6" opacity="0.85"/>
+
+  <!-- U ribbon body -->
+  <path d="M84 48c-16 30-24 62-10 92 12 26 40 40 66 28 26-12 34-42 28-74"
+        fill="none" stroke="url(#uz-a)" stroke-width="34" stroke-linecap="round"/>
+  <!-- inner shade for ribbon depth -->
+  <path d="M101 58c-12 25-17 52-6 76 10 21 32 31 52 21 21-10 26-33 21-59"
+        fill="none" stroke="url(#uz-b)" stroke-width="12" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- front orbit over ribbon -->
+  <path d="M54 163c14 22 45 32 76 22 30-10 52-30 62-54"
+        fill="none" stroke="url(#uz-orbit)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M58 159c14 20 43 29 72 19 27-9 47-27 57-48"
+        fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- graduation cap -->
+  <g>
+    <path d="M124 100l44 19-44 19-44-19z" fill="url(#uz-cap)"/>
+    <path d="M106 128v18c0 9 36 9 36 0v-18l-18 8z" fill="url(#uz-cap)"/>
+    <path d="M168 119v15" stroke="#13205e" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="168" cy="138" r="6" fill="#13205e"/>
+    <circle cx="124" cy="119" r="5" fill="#ffffff" opacity="0.9"/>
+  </g>
+
+  <!-- sparkle -->
+  <path d="M202 22c3 18 9 24 26 27-17 3-23 9-26 27-3-18-9-24-26-27 17-3 23-9 26-27z" fill="url(#uz-spark)"/>
+  <path d="M52 206c2 9 5 12 13 14-8 2-11 5-13 14-2-9-5-12-13-14 8-2 11-5 13-14z" fill="url(#uz-spark)" opacity="0.8"/>
+</svg>

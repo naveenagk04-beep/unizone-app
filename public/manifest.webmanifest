@@ -1,0 +1,17 @@
+{
+  "name": "UniZone — Your Campus. All in One Zone.",
+  "short_name": "UniZone",
+  "description": "One integrated campus app for students, faculty, HODs, admins, canteen staff and event coordinators.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
