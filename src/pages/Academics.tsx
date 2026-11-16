@@ -47,6 +47,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const STAFF = ["faculty", "hod", "admin"];
+const PAGE_NOW_MS = Date.now();
 
 export default function Academics() {
   const { user } = useAuth();
@@ -135,8 +136,8 @@ export default function Academics() {
       <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Attendance" value={`${overview.attendancePercent}%`} hint="All recorded sessions" icon={TrendingUp} tone="emerald" />
         <Stat label="Subjects" value={overview.subjects.length} hint={`Semester ${overview.subjects[0]?.semester ?? 5}`} icon={BookOpen} tone="indigo" />
-        <Stat label="Open assignments" value={overview.assignments.filter((a) => a.dueAt > Date.now()).length} hint="Across your scope" icon={FileText} tone="violet" />
-        <Stat label="Upcoming exams" value={overview.exams.filter((e) => e.date > Date.now()).length} hint="Internal assessments" icon={CalendarDays} tone="amber" />
+        <Stat label="Open assignments" value={overview.assignments.filter((a) => a.dueAt > PAGE_NOW_MS).length} hint="Across your scope" icon={FileText} tone="violet" />
+        <Stat label="Upcoming exams" value={overview.exams.filter((e) => e.date > PAGE_NOW_MS).length} hint="Internal assessments" icon={CalendarDays} tone="amber" />
       </div>
 
       <Tabs defaultValue="overview" className="gap-5">
@@ -258,7 +259,7 @@ export default function Academics() {
             <div className="space-y-3">
               {overview.assignments.map((assignment) => {
                 const submission = submittedByAssignment.get(assignment._id);
-                const overdue = assignment.dueAt < Date.now();
+                const overdue = assignment.dueAt < PAGE_NOW_MS;
                 return (
                   <div
                     key={assignment._id}

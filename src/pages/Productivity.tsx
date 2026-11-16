@@ -7,7 +7,6 @@ import {
   EmptyState,
   Chip,
   Loading,
-  Field,
   ProgressBar,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import {
   Pause,
   Play,
   Plus,
-  RefreshCw,
   RotateCcw,
   Sparkles,
   Target,
@@ -56,6 +54,77 @@ function readStored(): TimerStore | null {
   }
 }
 
+type InitialTimer = {
+  duration: number;
+  subject: string;
+  remaining: number;
+  running: boolean;
+  startedAt: number | null;
+  endAt: number | null;
+  restored: boolean;
+  interrupted: boolean;
+  awayStartedAt: number | null;
+};
+
+const DEFAULT_SUBJECT = "Database Management Systems";
+
+/** Read the persisted timer once, at mount. A session that expired while the tab
+ * was closed comes back as `interrupted` so it can be recorded as such. */
+function readInitialTimer(): InitialTimer {
+  const stored = readStored();
+  if (!stored) {
+    return {
+      duration: 25,
+      subject: DEFAULT_SUBJECT,
+      remaining: 25 * 60,
+      running: false,
+      startedAt: null,
+      endAt: null,
+      restored: false,
+      interrupted: false,
+      awayStartedAt: null,
+    };
+  }
+  if (stored.running && stored.endAt) {
+    const left = Math.max(0, Math.round((stored.endAt - Date.now()) / 1000));
+    if (left > 0) {
+      return {
+        duration: stored.duration,
+        subject: stored.subject,
+        remaining: left,
+        running: true,
+        startedAt: stored.startedAt,
+        endAt: stored.endAt,
+        restored: true,
+        interrupted: false,
+        awayStartedAt: null,
+      };
+    }
+    return {
+      duration: stored.duration,
+      subject: stored.subject,
+      remaining: stored.duration * 60,
+      running: false,
+      startedAt: null,
+      endAt: null,
+      restored: false,
+      interrupted: true,
+      awayStartedAt: stored.startedAt,
+    };
+  }
+  return {
+    duration: stored.duration,
+    subject: stored.subject,
+    remaining: stored.remaining,
+    running: false,
+    startedAt: null,
+    endAt: null,
+    restored: false,
+    interrupted: false,
+    awayStartedAt: null,
+  };
+}
+
 export default function Productivity() {
   const data = useQuery(api.productivity.overview, {});
   const subjects = useQuery(api.academics.overview, {});
@@ -65,12 +134,13 @@ export default function Productivity() {
   const addHabit = useMutation(api.productivity.addHabit);
   const toggleHabitToday = useMutation(api.productivity.toggleHabitToday);
 
-  const [duration, setDuration] = useState(25);
-  const [subject, setSubject] = useState("Database Management Systems");
-  const [remaining, setRemaining] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [endAt, setEndAt] = useState<number | null>(null);
+  const [initial] = useState(readInitialTimer);
+  const [duration, setDuration] = useState(initial.duration);
+  const [subject, setSubject] = useState(initial.subject);
+  const [remaining, setRemaining] = useState(initial.remaining);
+  const [running, setRunning] = useState(initial.running);
+  const [startedAt, setStartedAt] = useState<number | null>(initial.startedAt);
+  const [endAt, setEndAt] = useState<number | null>(initial.endAt);
   const [focusMode, setFocusMode] = useState(false);
   const [custom, setCustom] = useState(45);
   const completedRef = useRef(false);
@@ -79,39 +149,26 @@ export default function Productivity() {
   const [goalTarget, setGoalTarget] = useState(5);
   const [habitName, setHabitName] = useState("");
 
-  // Restore a session across refresh. A session whose end passed while the tab was
-  // closed is recorded as interrupted on the next load.
+  // A restored session keeps ticking; one whose end passed while away is logged
+  // as interrupted so the stats reflect what actually happened.
   useEffect(() => {
-    const stored = readStored();
-    if (!stored) return;
-    setDuration(stored.duration);
-    setSubject(stored.subject);
-    if (stored.running && stored.endAt) {
-      const left = Math.max(0, Math.round((stored.endAt - Date.now()) / 1000));
-      if (left > 0) {
-        setStartedAt(stored.startedAt);
-        setEndAt(stored.endAt);
-        setRemaining(left);
-        setRunning(true);
-        toast.info("Focus session restored", { description: `${left}s remaining on your timer.` });
-      } else {
-        setRemaining(stored.duration * 60);
-        logSession({
-          minutes: stored.duration,
-          startedAt: stored.startedAt,
-          subject: stored.subject,
-          kind: "pomodoro",
-          completed: false,
-        })
-          .then(() => toast.info("An away session was recorded as interrupted."))
-          .catch(() => undefined);
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    } else {
-      setRemaining(stored.remaining);
+    if (initial.interrupted && initial.awayStartedAt) {
+      localStorage.removeItem(STORAGE_KEY);
+      logSession({
+        minutes: initial.duration,
+        startedAt: initial.awayStartedAt,
+        subject: initial.subject,
+        kind: "pomodoro",
+        completed: false,
+      })
+        .then(() => toast.info("An away session was recorded as interrupted."))
+        .catch(() => undefined);
+    } else if (initial.restored) {
+      toast.info("Focus session restored", {
+        description: `${initial.remaining}s remaining on your timer.`,
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initial, logSession]);
 
   useEffect(() => {
     if (!running || !endAt) return;

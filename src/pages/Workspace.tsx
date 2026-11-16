@@ -23,16 +23,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fmtDate, fmtShortDate, isoIn, todayISO } from "@/lib/format";
+import { fmtShortDate, isoIn, todayISO } from "@/lib/format";
 import { useMutation, useQuery } from "convex/react";
 import {
   Bookmark,
   CalendarDays,
   Check,
   CheckSquare,
-  ClipboardList,
   ExternalLink,
-  FileText,
   Pin,
   PinOff,
   Plus,

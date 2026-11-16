@@ -273,10 +273,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   }, [ensureSeed, user]);
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

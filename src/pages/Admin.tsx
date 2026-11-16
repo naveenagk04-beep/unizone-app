@@ -1,5 +1,4 @@
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import {
   PageWrap,
@@ -40,7 +39,8 @@ type RoleOption = (typeof ROLES)[number];
 
 export default function Admin() {
   const { user } = useAuth();
-  const data = useQuery(api.admin.overview, {});
+  const isAdmin = user?.role === "admin";
+  const data = useQuery(api.admin.overview, isAdmin ? {} : "skip");
   const setUserRole = useMutation(api.admin.setUserRole);
   const setUserStatus = useMutation(api.admin.setUserStatus);
   const updatePolicy = useMutation(api.admin.updatePolicy);
@@ -49,6 +49,20 @@ export default function Admin() {
   const decideClaim = useMutation(api.lostfound.decideClaim);
   const markResolved = useMutation(api.lostfound.markResolved);
   const [userQuery, setUserQuery] = useState("");
+
+  if (!isAdmin) {
+    return (
+      <PageWrap>
+        <Panel>
+          <EmptyState
+            icon={ShieldCheck}
+            title="Admin access required"
+            description="This console manages roles, policies, moderation and the audit trail. Preview the admin portal from your account menu to explore it."
+          />
+        </Panel>
+      </PageWrap>
+    );
+  }
 
   if (data === undefined) return <Loading label="Loading the admin console" />;
 

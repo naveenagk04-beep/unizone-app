@@ -20,12 +20,10 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  Clock3,
   Coffee,
   FileText,
   GraduationCap,
   Loader2,
-  MessageSquareText,
   ShieldCheck,
   Sparkles,
   Timer,
@@ -37,6 +35,10 @@ import { Link } from "react-router";
 import type { ReactNode } from "react";
 
 const ACADEMIC_ROLES = ["student", "faculty", "hod", "admin"];
+const PAGE_NOW = new Date();
+const PAGE_NOW_MS = PAGE_NOW.getTime();
+const TODAY_INDEX = PAGE_NOW.getDay();
+const NOW_HHMM = PAGE_NOW.toTimeString().slice(0, 5);
 
 function Welcome({
   name,
@@ -125,17 +127,16 @@ export default function Dashboard() {
   const board = useQuery(api.canteen.board, role === "canteen_staff" ? {} : "skip");
   const myOrders = useQuery(api.canteen.myOrders, isStudent ? {} : "skip");
 
-  const today = new Date().getDay();
+  const today = TODAY_INDEX;
   const todaySlots = (academics?.timetable ?? [])
     .filter((s) => s.day === today)
     .sort((a, b) => a.start.localeCompare(b.start));
-  const nowHHMM = new Date().toTimeString().slice(0, 5);
-  const nextClass = todaySlots.find((s) => s.start >= nowHHMM) ?? todaySlots[0];
+  const nextClass = todaySlots.find((s) => s.start >= NOW_HHMM) ?? todaySlots[0];
   const submittedIds = new Set((academics?.submissions ?? []).map((s) => s.assignmentId));
   const deadlines = (academics?.assignments ?? [])
-    .filter((a) => a.dueAt > Date.now() - 86_400_000)
+    .filter((a) => a.dueAt > PAGE_NOW_MS - 86_400_000)
     .slice(0, 4);
-  const upcomingEvents = (events ?? []).filter((e) => e.startAt > Date.now()).slice(0, 3);
+  const upcomingEvents = (events ?? []).filter((e) => e.startAt > PAGE_NOW_MS).slice(0, 3);
   const latestRequests = (requests ?? []).slice(0, 3);
   const pendingRequests = (requests ?? []).filter((r) =>
     ["under_faculty_review", "forwarded_to_hod", "submitted", "returned"].includes(r.status),
@@ -289,7 +290,7 @@ export default function Dashboard() {
                 <div className="space-y-2.5">
                   {deadlines.map((a) => {
                     const submitted = submittedIds.has(a._id);
-                    const daysLeft = Math.ceil((a.dueAt - Date.now()) / 86_400_000);
+                    const daysLeft = Math.ceil((a.dueAt - PAGE_NOW_MS) / 86_400_000);
                     return (
                       <div
                         key={a._id}

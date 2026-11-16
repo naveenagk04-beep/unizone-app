@@ -19,7 +19,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { fmtShortDate, isoIn, toEpoch } from "@/lib/format";
 import { useMutation, useQuery } from "convex/react";
 import {
-  ArrowRight,
   BookOpen,
   Bot,
   BrainCircuit,

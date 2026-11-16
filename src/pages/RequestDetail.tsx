@@ -317,6 +317,7 @@ export default function RequestDetail() {
               <div className="space-y-2">
                 <Button
                   className="w-full justify-start gap-2"
+                  disabled={request.currentRole === "faculty" && !request.finalStep}
                   onClick={() => {
                     setAction("approve");
                     setRemarks("");

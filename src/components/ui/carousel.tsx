@@ -93,12 +93,16 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return
-    onSelect(api)
     api.on("reInit", onSelect)
     api.on("select", onSelect)
 
+    // Defer the initial callback so the effect itself does not trigger a render.
+    const initial = window.setTimeout(() => onSelect(api), 0)
+
     return () => {
-      api?.off("select", onSelect)
+      window.clearTimeout(initial)
+      api.off("reInit", onSelect)
+      api.off("select", onSelect)
     }
   }, [api, onSelect])
 

@@ -50,6 +50,7 @@ const THEMES: Record<string, string> = {
 };
 
 const STAFF = ["event_coordinator", "admin"];
+const PAGE_NOW_MS = Date.now();
 
 export default function Events() {
   const { user } = useAuth();
@@ -80,8 +81,8 @@ export default function Events() {
 
   if (events === undefined) return <Loading label="Loading campus events" />;
 
-  const upcoming = events.filter((e) => e.endAt > Date.now());
-  const past = events.filter((e) => e.endAt <= Date.now());
+  const upcoming = events.filter((e) => e.endAt > PAGE_NOW_MS);
+  const past = events.filter((e) => e.endAt <= PAGE_NOW_MS);
   const totalRegistrations = events.reduce((sum, e) => sum + e.registrationCount, 0);
 
   return (
@@ -152,7 +153,7 @@ export default function Events() {
           {upcoming.map((event) => {
             const seatsLeft = Math.max(0, event.capacity - event.registrationCount);
             const full = seatsLeft === 0;
-            const started = event.startAt < Date.now();
+            const started = event.startAt < PAGE_NOW_MS;
             return (
               <div key={event._id} className="uz-card uz-card-hover flex flex-col overflow-hidden">
                 <div className={`relative bg-gradient-to-br ${THEMES[event.theme] ?? THEMES.indigo} p-4 text-white`}>

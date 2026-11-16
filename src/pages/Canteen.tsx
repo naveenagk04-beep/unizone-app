@@ -1,5 +1,4 @@
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import {
   PageWrap,
@@ -61,6 +60,7 @@ export default function Canteen() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [receipt, setReceipt] = useState<{ tokenNo: number; amount: number } | null>(null);
+  const [orderKey, setOrderKey] = useState(() => `web-${crypto.randomUUID()}`);
   const [category, setCategory] = useState("All");
   const [itemOpen, setItemOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -97,9 +97,10 @@ export default function Canteen() {
       const result = await createOrder({
         items: cartLines.map((line) => ({ id: line.item._id, qty: line.qty })),
         note: note || undefined,
-        idempotencyKey: `web-${crypto.randomUUID()}`,
+        idempotencyKey: orderKey,
       });
       setReceipt({ tokenNo: result.tokenNo, amount: total });
+      setOrderKey(`web-${crypto.randomUUID()}`);
       setCart({});
       setNote("");
       setCheckoutOpen(false);

@@ -1,293 +1,118 @@
-## Overview
+# UniZone — Your Campus. All in One Zone.
 
-This project uses the following tech stack:
-- Vite
-- Typescript
-- React Router v7 (all imports from `react-router` instead of `react-router-dom`)
-- React 19 (for frontend components)
-- Tailwind v4 (for styling)
-- Shadcn UI (for UI components library)
-- Lucide Icons (for icons)
-- Convex (for backend & database)
-- Convex Auth (for authentication)
-- Framer Motion (for animations)
-- Three js (for 3d models)
+One role-based campus product for students, faculty, HODs, administrators, canteen
+staff and event coordinators. Every module shares one auth system, one design
+system and one live data layer.
 
-All relevant files live in the 'src' directory.
+## What is in version 1
 
-Use bun for the package manager.
+| Module | What it does |
+|---|---|
+| Dashboard | Role-aware overview of classes, deadlines, approvals, focus, events and notifications |
+| Academics | Timetable, attendance, internal marks, assignments + submissions, exams, announcements |
+| E-Library | Unit-wise notes, papers, videos, restricted material, search, bookmarks, faculty uploads |
+| Study Hub | Draft-first AI planner, grounded doubt solver with citations, practice tests, note summaries |
+| Focus & habits | Pomodoro with refresh recovery, custom timers, focus mode, goals, habits, weekly stats |
+| Personal workspace | Notes, tasks, personal calendar merged with read-only official dates, saved resources |
+| OD & Leave | Policy-driven submission, reviewer queue, timed history, return/resubmit, audited decisions, permission letter |
+| Canteen | Live menu, cart, simulated payment, token allocation, real-time staff board |
+| Events | Browse/register with capacity limits, coordinator studio, registrations, OD kept separate |
+| Lost & Found | Reports, private claims, staff verification, return tracking |
+| Student Connect | Opt-in profiles, connection requests, communities, verified opportunities, reports |
+| Notifications | In-app inbox with per-user read state and links into every module |
+| Admin console | Users and roles, departments, approval policies, moderation, lost & found, audit log |
 
-## Setup
+## Stack
 
-This project is set up already and running on a cloud environment, as well as a convex development in the sandbox.
+React 19 · TypeScript · Vite · Tailwind CSS v4 · shadcn/ui (Radix) · React Router ·
+Framer Motion · Convex (database + server functions) · Convex Auth · Bun.
 
-## Environment Variables
+The original product spec assumed Firebase. In this environment the same
+architecture is implemented on Convex: server-side queries/mutations own all
+official writes, role checks and audit logging, and the UI subscribes reactively.
 
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
+## Run it
 
-The convex server has a separate set of environment variables that are accessible by the convex backend.
-
-Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
-
-
-# Using Authentication (Important!)
-
-You must follow these conventions when using authentication.
-
-## Auth is already set up.
-
-All convex authentication functions are already set up. The auth currently uses email OTP and anonymous users, but can support more.
-
-The email OTP configuration is defined in `src/convex/auth/emailOtp.ts`. DO NOT MODIFY THIS FILE.
-
-Also, DO NOT MODIFY THESE AUTH FILES: `src/convex/auth.config.ts` and `src/convex/auth.ts`.
-
-## Using Convex Auth on the backend
-
-On the `src/convex/users.ts` file, you can use the `getCurrentUser` function to get the current user's data.
-
-## Using Convex Auth on the frontend
-
-The `/auth` page is already set up to use auth. Navigate to `/auth` for all log in / sign up sequences.
-
-You MUST use this hook to get user data. Never do this yourself without the hook:
-```typescript
-import { useAuth } from "@/hooks/use-auth";
-
-const { isLoading, isAuthenticated, user, signIn, signOut } = useAuth();
+```bash
+bun install
+bun convex dev        # managed by the Freebuff environment
+bun dev               # managed by the Freebuff environment
 ```
 
-## Protected Routes
+Typecheck: `bun tsc -b --noEmit`. After changing anything in `src/convex/`, run
+`bun convex dev --once` first so generated types refresh.
 
-The starter `/dashboard` route is protected with `RequireAuth`. Extend that page
-for the product's authenticated experience, and reuse `RequireAuth` when adding
-another protected route — do NOT hand-roll a redirect to `/auth`, since landing
-on a bare sign-in form with no explanation of what was blocked is confusing.
+## Signing in and exploring roles
 
-`RequireAuth` states the block on the page the visitor asked for and sends them
-to `/auth?returnTo=<current route>` when they choose to sign in, so they come
-back to it. Pass `title` and `description` to say what the page is:
+1. Open `/auth`.
+2. Use **Continue with a demo account** (no email delivery needed) or sign in with
+   an email one-time code.
+3. Pick a portal on the onboarding screen: student, faculty, HOD, admin, canteen
+   staff or event coordinator.
+4. Use the account menu → **Preview another portal** to switch roles at any time.
+   This is demo-only; every backend guard still checks the active role.
 
-```tsx
-<Route
-  path="/dashboard"
-  element={
-    <RequireAuth
-      title="Sign in to view your dashboard"
-      description="Your projects and settings live here."
-    >
-      <Dashboard />
-    </RequireAuth>
-  }
-/>
+On first sign-in the app seeds a demo institution — departments, subjects,
+timetable, library material, assignments, pending approvals for the review queue,
+canteen orders, events, lost & found cases and connect profiles — plus personal
+data for the signed-in account. The seed is idempotent.
+
+## Suggested demo path
+
+1. As a **student**, submit an OD request with a document, then open its timeline.
+2. Open the **canteen**, place an order, and note the token + simulated payment.
+3. Register for an event, then use **Apply OD** separately — registration is not approval.
+4. Switch to **faculty** and review a seeded request: forward it, or return it with remarks.
+5. Switch to **HOD** and approve a forwarded request.
+6. Switch to **admin** to change a role, toggle OD attendance credit, resolve a
+   moderation report and inspect the audit log.
+
+## Design
+
+- Logo mark: `src/assets/unizone-mark.svg` (also `public/logo.svg` and the favicon).
+  The wordmark is rendered with the display font and brand gradient in `src/components/Logo.tsx`.
+- Theme tokens: `src/index.css` — indigo/violet accents, quiet neutral surfaces,
+  soft layered cards, Inter + Plus Jakarta Sans.
+- Shared primitives: `src/components/shared.tsx`; app shell and role navigation:
+  `src/components/AppShell.tsx`.
+
+## Server structure
+
+```text
+src/convex/
+├─ schema.ts        all tables and indexes
+├─ seed.ts          idempotent demo institution + per-user setup
+├─ lib.ts           auth/role guards, audit, notifications, counters
+├─ academics.ts     timetable, attendance, marks, assignments, announcements
+├─ requests.ts      OD/leave state machine, policy resolution, queue
+├─ library.ts       access-filtered resources and bookmarks
+├─ study.ts         planner, grounded Q&A, quizzes, async summaries
+├─ productivity.ts  tasks, notes, goals, habits, focus sessions, calendar
+├─ canteen.ts       menu, idempotent orders, tokens, live board
+├─ events.ts        registrations, capacity, coordinator tools
+├─ lostfound.ts     reports, claims, verification, returns
+├─ connect.ts       public profiles, connections, opportunities, communities
+├─ admin.ts         users, roles, policies, moderation, audit
+├─ notifications.ts inbox and read state
+└─ profile.ts       onboarding role, demo preview, display profile
 ```
 
-Pass `redirectImmediately` for a route where bouncing straight to `/auth` really
-is better.
-
-## Auth Page
-
-The auth page is defined in `src/pages/Auth.tsx`. Send sign-in and sign-up actions
-to `/auth`.
-
-## Authorization
-
-You can perform authorization checks on the frontend and backend.
-
-On the frontend, you can use the `useAuth` hook to get the current user's data and authentication state.
-
-You should also be protecting queries, mutations, and actions at the base level, checking for authorization securely.
-
-## Adding a redirect after auth
-
-The `/auth` route in `src/main.tsx` redirects to `/dashboard` by default. If the
-product's main authenticated route is different, update `redirectAfterAuth` to
-that route. A validated same-origin `returnTo` query parameter takes priority so
-users can resume the protected page they originally requested. Never leave an
-authenticated product redirecting back to the public landing page.
-
-## Complete authenticated products
-
-When the requested product implies accounts, a workspace, a dashboard, or other
-signed-in functionality, the task is not complete with only a landing page and
-auth form. Build the main authenticated experience, protect its route, and verify
-that signing in reaches it.
-
-# Frontend Conventions
-
-You will be using the Vite frontend with React 19, Tailwind v4, and Shadcn UI.
-
-Generally, pages should be in the `src/pages` folder, and components should be in the `src/components` folder.
-
-Shadcn primitives are located in the `src/components/ui` folder and should be used by default.
-
-## Page routing
-
-Your page component should go under the `src/pages` folder.
-
-When adding a page, update the react router configuration in `src/main.tsx` to include the new route you just added.
-
-## Shad CN conventions
-
-Follow these conventions when using Shad CN components, which you should use by default.
-- Remember to use "cursor-pointer" to make the element clickable
-- For title text, use the "tracking-tight font-bold" class to make the text more readable
-- Always make apps MOBILE RESPONSIVE. This is important
-- AVOID NESTED CARDS. Try and not to nest cards, borders, components, etc. Nested cards add clutter and make the app look messy.
-- AVOID SHADOWS. Avoid adding any shadows to components. stick with a thin border without the shadow.
-- Avoid skeletons; instead, use the loader2 component to show a spinning loading state when loading data.
-
-
-## Landing Pages
-
-You must always create good-looking designer-level styles to your application. 
-- Make it well animated and fit a certain "theme", ie neo brutalist, retro, neumorphism, glass morphism, etc
-
-Use known images and emojis from online.
-
-If the user is logged in already, show the get started button to say "Dashboard" or "Profile" instead to take them there.
-
-## Responsiveness and formatting
-
-Make sure pages are wrapped in a container to prevent the width stretching out on wide screens. Always make sure they are centered aligned and not off-center.
-
-Always make sure that your designs are mobile responsive. Verify the formatting to ensure it has correct max and min widths as well as mobile responsiveness.
-
-- Always create sidebars for protected dashboard pages and navigate between pages
-- Always create navbars for landing pages
-- On these bars, the created logo should be clickable and redirect to the index page
-
-## Animating with Framer Motion
-
-You must add animations to components using Framer Motion. It is already installed and configured in the project.
-
-To use it, import the `motion` component from `framer-motion` and use it to wrap the component you want to animate.
-
-
-### Other Items to animate
-- Fade in and Fade Out
-- Slide in and Slide Out animations
-- Rendering animations
-- Button clicks and UI elements
-
-Animate for all components, including on landing page and app pages.
-
-## Three JS Graphics
-
-Your app comes with three js by default. You can use it to create 3D graphics for landing pages, games, etc.
-
-
-## Colors
-
-You can override colors in: `src/index.css`
-
-This uses the oklch color format for tailwind v4.
-
-Always use these color variable names.
-
-Make sure all ui components are set up to be mobile responsive and compatible with both light and dark mode.
-
-Set theme using `dark` or `light` variables at the parent className.
-
-## Styling and Theming
-
-When changing the theme, always change the underlying theme of the shad cn components app-wide under `src/components/ui` and the colors in the index.css file.
-
-Avoid hardcoding in colors unless necessary for a use case, and properly implement themes through the underlying shad cn ui components.
-
-When styling, ensure buttons and clickable items have pointer-click on them (don't by default).
-
-Always follow a set theme style and ensure it is tuned to the user's liking.
-
-## Toasts
-
-You should always use toasts to display results to the user, such as confirmations, results, errors, etc.
-
-Use the shad cn Sonner component as the toaster. For example:
-
-```
-import { toast } from "sonner"
-
-import { Button } from "@/components/ui/button"
-export function SonnerDemo() {
-  return (
-    <Button
-      variant="outline"
-      onClick={() =>
-        toast("Event has been created", {
-          description: "Sunday, December 03, 2023 at 9:00 AM",
-          action: {
-            label: "Undo",
-            onClick: () => console.log("Undo"),
-          },
-        })
-      }
-    >
-      Show Toast
-    </Button>
-  )
-}
-```
-
-Remember to import { toast } from "sonner". Usage: `toast("Event has been created.")`
-
-## Dialogs
-
-Always ensure your larger dialogs have a scroll in its content to ensure that its content fits the screen size. Make sure that the content is not cut off from the screen.
-
-Ideally, instead of using a new page, use a Dialog instead. 
-
-# Using the Convex backend
-
-You will be implementing the convex backend. Follow your knowledge of convex and the documentation to implement the backend.
-
-## The Convex Schema
-
-You must correctly follow the convex schema implementation.
-
-The schema is defined in `src/convex/schema.ts`.
-
-Do not include the `_id` and `_creationTime` fields in your queries (it is included by default for each table).
-Do not index `_creationTime` as it is indexed for you. Never have duplicate indexes.
-
-
-## Convex Actions: Using CRUD operations
-
-When running anything that involves external connections, you must use a convex action with "use node" at the top of the file.
-
-You cannot have queries or mutations in the same file as a "use node" action file. Thus, you must use pre-built queries and mutations in other files.
-
-You can also use the pre-installed internal crud functions for the database:
-
-```ts
-// in convex/users.ts
-import { crud } from "convex-helpers/server/crud";
-import schema from "./schema.ts";
-
-export const { create, read, update, destroy } = crud(schema, "users");
-
-// in some file, in an action:
-const user = await ctx.runQuery(internal.users.read, { id: userId });
-
-await ctx.runMutation(internal.users.update, {
-  id: userId,
-  patch: {
-    status: "inactive",
-  },
-});
-```
-
-
-## Common Convex Mistakes To Avoid
-
-When using convex, make sure:
-- Document IDs are referenced as `_id` field, not `id`.
-- Document ID types are referenced as `Id<"TableName">`, not `string`.
-- Document object types are referenced as `Doc<"TableName">`.
-- Keep schemaValidation to false in the schema file.
-- You must correctly type your code so that it passes the type checker.
-- You must handle null / undefined cases of your convex queries for both frontend and backend, or else it will throw an error that your data could be null or undefined.
-- Always use the `@/folder` path, with `@/convex/folder/file.ts` syntax for importing convex files.
-- This includes importing generated files like `@/convex/_generated/server`, `@/convex/_generated/api`
-- Remember to import functions like useQuery, useMutation, useAction, etc. from `convex/react`
-- NEVER have return type validators.
+## Deliberate demo limitations
+
+- **AI** answers are produced by a local deterministic engine over indexed library
+  excerpts — no external model call, so no key is needed. The provider boundary,
+  quota (30 requests/day), grounded/general labelling and citation integrity are
+  in place for a real provider to be dropped in.
+- **Payments** use a visibly labelled simulated provider; no card data is stored.
+- **File attachments** record the file name (and validated access rules) rather than
+  uploading bytes; production would use private storage plus server-side type checks.
+- **Push/email** delivery is not wired; notifications are in-app and persisted.
+- **Event reminders** are created at registration time rather than by a scheduler.
+- Role preview exists only to make the demo explorable; remove `profile.previewRole`
+  and the account-menu entry for a production deployment.
+
+## Environment notes
+
+Environment variables are managed by the Freebuff Keys UI. The client only needs the
+public `VITE_CONVEX_URL` / `VITE_CONVEX_SITE_URL` already configured for this project.
+Never place secrets in `VITE_*` variables.

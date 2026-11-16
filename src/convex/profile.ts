@@ -3,6 +3,15 @@ import { mutation } from "./_generated/server";
 import { roleValidator } from "./schema";
 import { audit, requireUser } from "./lib";
 
+const DEMO_NAMES: Record<string, string> = {
+  student: "Aditi Rao",
+  faculty: "Prof. Arvind Shah",
+  hod: "Dr. Kavita Menon",
+  admin: "Rhea Kapoor",
+  canteen_staff: "Suresh Kumar",
+  event_coordinator: "Nikhil Varma",
+};
+
 /**
  * Demo onboarding: a newly signed-in account picks the portal it wants to
  * explore. This only succeeds while no role is assigned — it can never be used
@@ -16,6 +25,7 @@ export const setInitialRole = mutation({
     if (user.role) throw new Error("This account already has a role.");
     const isStudent = args.role === "student";
     await ctx.db.patch(user._id, {
+      name: user.name ?? DEMO_NAMES[args.role],
       role: args.role,
       department: user.department ?? "CSE",
       departmentId: "CSE",

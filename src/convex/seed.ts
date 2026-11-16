@@ -1,4 +1,4 @@
-import { internalMutation, mutation } from "./_generated/server";
+import { mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { requireUser } from "./lib";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -845,7 +845,7 @@ async function seedUserData(ctx: MutationCtx, user: Doc<"users">, userName: stri
     }
 
     await ctx.db.insert("requests", {
-      refNo: "OD-2026-001048",
+      refNo: "OD-2026-001020",
       type: "od",
       category: "representation",
       userId: user._id,
@@ -1010,30 +1010,3 @@ export const ensureSeed = mutation({
   },
 });
 
-export const _devSeedInstitution = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const existing = await ctx.db
-      .query("meta")
-      .withIndex("by_key", (q) => q.eq("key", "institution"))
-      .unique();
-    if (!existing) {
-      await seedInstitution(ctx);
-      await ctx.db.insert("meta", { key: "institution", value: "seeded" });
-    }
-    return "institution seeded";
-  },
-});
-
-export const _devSeed = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", "22cse041@campus.edu"))
-      .unique();
-    if (!user) throw new Error("Demo student missing — seed institution first.");
-    await seedUserData(ctx, user, user.name ?? "Demo student");
-    return "seeded demo student";
-  },
-});

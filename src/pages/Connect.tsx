@@ -24,19 +24,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fmtDateTime, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import { useMutation, useQuery } from "convex/react";
 import {
   ArrowRight,
   BadgeCheck,
   Flag,
-  GraduationCap,
   Handshake,
   HeartHandshake,
   Lightbulb,
   Lock,
   MessageSquarePlus,
-  Plus,
   Search,
   ShieldAlert,
   Sparkles,

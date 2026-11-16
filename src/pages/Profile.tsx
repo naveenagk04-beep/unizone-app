@@ -28,7 +28,7 @@ import {
   Timer,
   UserRound,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -51,16 +51,9 @@ export default function Profile() {
   const updateProfile = useMutation(api.profile.updateDisplayProfile);
   const previewRole = useMutation(api.profile.previewRole);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [bio, setBio] = useState("");
-
-  useEffect(() => {
-    if (!user) return;
-    setName(user.name ?? "");
-    setPhone(user.phone ?? "");
-    setBio(user.bio ?? "");
-  }, [user]);
+  const [name, setName] = useState(user?.name ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [bio, setBio] = useState(user?.bio ?? "");
 
   if (!user) return null;
   const role = user.role ?? "student";

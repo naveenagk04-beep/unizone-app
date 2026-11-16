@@ -18,6 +18,8 @@ import {
 import { useState } from "react";
 import { Link } from "react-router";
 
+const PAGE_NOW_MS = Date.now();
+
 export default function Review() {
   const { user } = useAuth();
   const queue = useQuery(api.requests.queue, {});
@@ -36,8 +38,9 @@ export default function Review() {
     )
     .sort((a, b) => (sort === "oldest" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
 
-  const now = Date.now();
-  const urgent = queue.filter((r) => new Date(`${r.startDate}T00:00:00`).getTime() - now < 3 * 86_400_000);
+  const urgent = queue.filter(
+    (r) => new Date(`${r.startDate}T00:00:00`).getTime() - PAGE_NOW_MS < 3 * 86_400_000,
+  );
 
   return (
     <PageWrap>
@@ -101,7 +104,7 @@ export default function Review() {
           <div className="space-y-2.5">
             {filtered.map((request) => {
               const daysUntil = Math.ceil(
-                (new Date(`${request.startDate}T00:00:00`).getTime() - Date.now()) / 86_400_000,
+                (new Date(`${request.startDate}T00:00:00`).getTime() - PAGE_NOW_MS) / 86_400_000,
               );
               return (
                 <Link
