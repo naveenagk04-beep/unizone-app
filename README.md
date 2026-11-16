@@ -99,10 +99,12 @@ src/convex/
 
 ## Deliberate demo limitations
 
-- **AI** answers are produced by a local deterministic engine over indexed library
-  excerpts — no external model call, so no key is needed. The provider boundary,
-  quota (30 requests/day), grounded/general labelling and citation integrity are
-  in place for a real provider to be dropped in.
+- **AI** answers come from the deployment's server-side LLM gateway
+  (`src/convex/ai.ts`); the integration key never reaches the browser. If the
+  provider is missing or fails, the deterministic retrieval engine answers
+  instead, so the Study Hub still works offline. Quota (30 requests/day),
+  grounded/general labelling and citation integrity apply to both paths;
+  citations are only attached when a real library excerpt was retrieved.
 - **Payments** use a visibly labelled simulated provider; no card data is stored.
 - **File attachments** record the file name (and validated access rules) rather than
   uploading bytes; production would use private storage plus server-side type checks.

@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { fmtShortDate, isoIn, toEpoch } from "@/lib/format";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   BookOpen,
   Bot,
@@ -61,7 +61,7 @@ export default function StudyHub() {
   const toggleTopic = useMutation(api.study.toggleTopic);
   const confirmPlan = useMutation(api.study.confirmPlan);
   const deletePlan = useMutation(api.study.deletePlan);
-  const ask = useMutation(api.study.ask);
+  const ask = useAction(api.study.ask);
   const deleteChat = useMutation(api.study.deleteChat);
   const generateQuiz = useMutation(api.study.generateQuiz);
   const submitQuiz = useMutation(api.study.submitQuiz);
@@ -137,7 +137,7 @@ export default function StudyHub() {
         description="Grounded answers with real citations, a draft-first planner, practice tests and revision summaries — all scoped to your account."
         actions={
           <Chip className="gap-1.5">
-            <BrainCircuit className="size-3" /> Demo AI engine · on-campus materials
+            <BrainCircuit className="size-3" /> AI answers · grounded in campus material
           </Chip>
         }
       />

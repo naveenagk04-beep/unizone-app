@@ -1,5 +1,14 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type QueryCtx,
+} from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { audit, requireUser } from "./lib";
 
@@ -70,14 +79,21 @@ function terms(text: string) {
     .filter((w) => w.length > 2 && !STOPWORDS.has(w));
 }
 
-export const ask = mutation({
+// Deterministic engine: used when the LLM provider is unavailable, and for
+// offline demos. It stays an internal mutation because the public entry point
+// is the `ask` action below, which prefers the real model.
+export const askLocal = internalMutation({
   args: {
+    userId: v.id("users"),
     subject: v.string(),
     question: v.string(),
     chatId: v.optional(v.id("aiChats")),
   },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("Please sign in to continue.");
+    if (user.status === "disabled")
+      throw new Error("This account has been disabled by the administrator.");
     const question = args.question.trim();
     if (question.length < 8) throw new Error("Ask a slightly longer question so I can help properly.");
 
@@ -199,6 +215,249 @@ export const ask = mutation({
       updatedAt: now,
     });
     return { chatId, message };
+  },
+});
+
+type PromptContext = {
+  subject: string;
+  question: string;
+  history: { role: string; content: string }[];
+  material: { title: string; unit: string; page: number; excerpt: string } | null;
+};
+
+const SYSTEM_PROMPT = [
+  "You are UniZone's study assistant for an Indian engineering college.",
+  "Answer for the subject the student selected, in the register of a patient tutor.",
+  "When retrieved course material is supplied, base the explanation on it and never invent a source, quote or page number.",
+  "When no material is supplied, say plainly that this is a general explanation and suggest adding the relevant notes to the E-Library.",
+  "Write plain text only: no markdown, no asterisks, no # headings. Use short section labels in Title Case and bullet points starting with the character •.",
+  "Stay under 220 words and finish with one exam-oriented tip.",
+].join(" ");
+
+function buildPrompt(context: PromptContext): string {
+  const lines: string[] = [`Subject: ${context.subject}`, `Student's question: ${context.question}`];
+  if (context.history.length) {
+    lines.push("Earlier in this conversation:");
+    for (const turn of context.history) {
+      lines.push(`${turn.role === "user" ? "Student" : "You"}: ${turn.content}`);
+    }
+  }
+  if (context.material) {
+    lines.push(
+      "Retrieved course material (the only material you may cite):",
+      `Title: ${context.material.title}`,
+      `Unit: ${context.material.unit}`,
+      `Excerpt: ${context.material.excerpt}`,
+    );
+  } else {
+    lines.push("Retrieved course material: none — answer as a general explanation and say so.");
+  }
+  return lines.join("\n");
+}
+
+async function retrieveMaterial(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  subject: string,
+  question: string,
+): Promise<PromptContext["material"]> {
+  const resources = await ctx.db.query("libraryResources").take(80);
+  const readable = resources.filter((r) => {
+    if (r.access === "public") return true;
+    if (r.access === "department") return r.department === user.department;
+    return !!user.role && ["faculty", "hod", "admin"].includes(user.role);
+  });
+  const qTerms = terms(question);
+  let bestScore = 0;
+  let best: (typeof readable)[number] | undefined;
+  for (const resource of readable) {
+    if (resource.subject !== subject && resource.subject !== "All subjects") continue;
+    const haystack = `${resource.title} ${resource.content} ${resource.tags.join(" ")}`.toLowerCase();
+    const score = qTerms.filter((t) => haystack.includes(t)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = resource;
+    }
+  }
+  if (!best || bestScore < 1) return null;
+
+  const sentences = best.content
+    .split(/(?<=\.)\s+/)
+    .filter((s) => s.trim().length > 20);
+  const excerpt = sentences
+    .map((s) => ({ s, score: qTerms.filter((t) => s.toLowerCase().includes(t)).length }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2)
+    .map((x) => x.s)
+    .join(" ")
+    .slice(0, 1200);
+
+  return {
+    title: best.title,
+    unit: best.unit,
+    page: Math.max(1, Math.round((best.pages || 1) * 0.35)),
+    excerpt: excerpt || best.description,
+  };
+}
+
+// Read-only half of the doubt solver: ownership, quota, conversation history
+// and retrieval. Runs before the model call so a blocked request costs nothing.
+export const askPrompt = internalQuery({
+  args: {
+    userId: v.id("users"),
+    subject: v.string(),
+    question: v.string(),
+    chatId: v.optional(v.id("aiChats")),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("Please sign in to continue.");
+    if (user.status === "disabled")
+      throw new Error("This account has been disabled by the administrator.");
+
+    const question = args.question.trim();
+    if (question.length < 8) throw new Error("Ask a slightly longer question so I can help properly.");
+
+    const quotaSetting = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "aiQuota"))
+      .unique();
+    const quota = Number(quotaSetting?.value ?? "30");
+    const chats = await ctx.db
+      .query("aiChats")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .take(200);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const usedToday = chats.filter((c) => c.createdAt >= startOfToday.getTime()).length;
+    if (usedToday >= quota) {
+      throw new Error(`You have reached today's limit of ${quota} AI requests. Practice sets and plans still work.`);
+    }
+
+    let history: PromptContext["history"] = [];
+    if (args.chatId) {
+      const chat = await ctx.db.get(args.chatId);
+      if (!chat || chat.userId !== user._id) throw new Error("Conversation not found.");
+      history = chat.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-4)
+        .map((m) => ({ role: m.role, content: m.content.slice(0, 700) }));
+    }
+
+    const material = await retrieveMaterial(ctx, user, args.subject, question);
+
+    const context: PromptContext = {
+      subject: args.subject,
+      question,
+      history,
+      material,
+    };
+    return context;
+  },
+});
+
+export const saveAssistant = internalMutation({
+  args: {
+    userId: v.id("users"),
+    chatId: v.optional(v.id("aiChats")),
+    subject: v.string(),
+    question: v.string(),
+    answer: v.string(),
+    grounded: v.boolean(),
+    citations: v.array(v.object({ title: v.string(), page: v.number() })),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("Please sign in to continue.");
+    const now = Date.now();
+    const message = {
+      id: uid(),
+      role: "assistant",
+      content: args.answer,
+      grounded: args.grounded,
+      citations: args.citations,
+    };
+    const userMessage = { id: uid(), role: "user", content: args.question };
+
+    if (args.chatId) {
+      const chat = await ctx.db.get(args.chatId);
+      if (!chat || chat.userId !== user._id) throw new Error("Conversation not found.");
+      await ctx.db.patch(args.chatId, {
+        messages: [...chat.messages, userMessage, message],
+        updatedAt: now,
+      });
+      return { chatId: args.chatId, message };
+    }
+
+    const chatId = await ctx.db.insert("aiChats", {
+      userId: user._id,
+      title: args.question.length > 64 ? `${args.question.slice(0, 61)}…` : args.question,
+      subject: args.subject,
+      mode: args.grounded ? "grounded" : "general",
+      messages: [userMessage, message],
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { chatId, message };
+  },
+});
+
+type AskResult = {
+  chatId: Id<"aiChats">;
+  message: {
+    id: string;
+    role: string;
+    content: string;
+    grounded?: boolean;
+    citations?: { title: string; page: number }[];
+  };
+};
+
+// Public entry point. The model is called server-side with the deployment's
+// integration key; if it is unavailable the deterministic engine answers, so
+// the Study Hub never breaks in a demo or offline environment.
+export const ask = action({
+  args: {
+    subject: v.string(),
+    question: v.string(),
+    chatId: v.optional(v.id("aiChats")),
+  },
+  handler: async (ctx, args): Promise<AskResult> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Please sign in to continue.");
+
+    const context = await ctx.runQuery(internal.study.askPrompt, {
+      userId,
+      subject: args.subject,
+      question: args.question,
+      chatId: args.chatId,
+    });
+
+    const completion = await ctx.runAction(internal.ai.complete, {
+      system: SYSTEM_PROMPT,
+      prompt: buildPrompt(context),
+    });
+
+    if (!completion.text) {
+      return await ctx.runMutation(internal.study.askLocal, {
+        userId,
+        subject: args.subject,
+        question: context.question,
+        chatId: args.chatId,
+      });
+    }
+
+    return await ctx.runMutation(internal.study.saveAssistant, {
+      userId,
+      chatId: args.chatId,
+      subject: args.subject,
+      question: context.question,
+      answer: completion.text,
+      grounded: !!context.material,
+      citations: context.material
+        ? [{ title: context.material.title, page: context.material.page }]
+        : [],
+    });
   },
 });
 
